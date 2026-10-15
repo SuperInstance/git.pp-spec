@@ -1,0 +1,122 @@
+{
+  "version": "0.3.0",
+  "description": "Pinned leaf hashes for the four cross-port verification cases. Every port must produce these exact hashes.",
+  "cases": [
+    {
+      "name": "case-1-minimal",
+      "input": {
+        "id": "a",
+        "kind": "task",
+        "parents": [],
+        "effects": {},
+        "reason": null
+      },
+      "canon": {
+        "effects": {},
+        "id": "a",
+        "kind": "task",
+        "parents": [],
+        "reason": null
+      },
+      "canon_json": "{\"effects\": {}, \"id\": \"a\", \"kind\": \"task\", \"parents\": [], \"reason\": null}",
+      "leaf": "229f56e059c1e8209d9e9c0a767ac70f02601f7abe53875069c7d55827533124"
+    },
+    {
+      "name": "case-2-nested",
+      "input": {
+        "id": "b",
+        "kind": "task",
+        "parents": [
+          "a"
+        ],
+        "effects": {
+          "x": {
+            "y": 1,
+            "z": [
+              1,
+              2,
+              3
+            ]
+          }
+        },
+        "reason": null
+      },
+      "canon": {
+        "effects": {
+          "x": {
+            "y": 1,
+            "z": [
+              1,
+              2,
+              3
+            ]
+          }
+        },
+        "id": "b",
+        "kind": "task",
+        "parents": [
+          "a"
+        ],
+        "reason": null
+      },
+      "canon_json": "{\"effects\": {\"x\": {\"y\": 1, \"z\": [1, 2, 3]}}, \"id\": \"b\", \"kind\": \"task\", \"parents\": [\"a\"], \"reason\": null}",
+      "leaf": "64a3cd29253cbeca672be7792c981ef3192bf23de2d6c0dee3708d611c496ad9"
+    },
+    {
+      "name": "case-3-boolean-string",
+      "input": {
+        "id": "c",
+        "kind": "witness",
+        "parents": [
+          "a"
+        ],
+        "effects": {
+          "ok": true,
+          "msg": "ok"
+        },
+        "reason": "witnessed"
+      },
+      "canon": {
+        "effects": {
+          "ok": true,
+          "msg": "ok"
+        },
+        "id": "c",
+        "kind": "witness",
+        "parents": [
+          "a"
+        ],
+        "reason": "witnessed"
+      },
+      "canon_json": "{\"effects\": {\"msg\": \"ok\", \"ok\": true}, \"id\": \"c\", \"kind\": \"witness\", \"parents\": [\"a\"], \"reason\": \"witnessed\"}",
+      "leaf": "97fd12eeb83d78a633613258d3357d84b6753861447a06525e4c54e18053f2f7"
+    },
+    {
+      "name": "case-4-non-bmp-id",
+      "input": {
+        "id": "🚀",
+        "kind": "task",
+        "parents": [
+          "c"
+        ],
+        "effects": {
+          "y": 1
+        },
+        "reason": null
+      },
+      "canon": {
+        "effects": {
+          "y": 1
+        },
+        "id": "🚀",
+        "kind": "task",
+        "parents": [
+          "c"
+        ],
+        "reason": null
+      },
+      "canon_json": "{\"effects\": {\"y\": 1}, \"id\": \"🚀\", \"kind\": \"task\", \"parents\": [\"c\"], \"reason\": null}",
+      "leaf": "83d31b8135b406d8d518733c5f28f3218d1c50ff2a5da2aca6cf698e6905e597"
+    }
+  ]
+}

@@ -2,8 +2,15 @@
 
 > Canonical, normative spec for the git.pp record format. The implementation-specific notes (rationale, performance, measured numbers) live in `DESIGN.md` and `docs/CHECKPOINT-V2.md` in `patchwork-quilt/git.pp-ng`. This document is the *contract* a port must satisfy to be conformant.
 
-**Version:** 0.2.0 (format v2)
+**Version:** 0.3.0 (format v2)
 **Status:** Stable. Existing v1 records are first-class forever.
+
+## What's new in 0.3.0
+
+- **§2.5 "The leaf encoding at the byte level"** — a worked example with the exact byte sequence a known input produces. Future port authors can use this as a *ground-truth* reference without reading the JS or Python port's source. This addresses a real gap surfaced by the C# port: the spec prose in §2 was correct but ambiguous; the byte-level example is unambiguous.
+- **§3.5 "Cross-port leaf verification"** — a small but canonical test that every port should run. A 4-record set with one non-BMP id, one signed-zero, and one with an effects list of mixed types. The expected leaves are pinned in this spec. A port that produces the same leaves is conformant on the encoding.
+- **§5.2 "Per-key resolution"** — clarified. The previous text described the algorithm as "gather then filter" but every implementation in fact uses a streaming "candidate vs current-setter" model. The new text describes the streaming model, which is what the conformance corpus actually tests. The "gather then filter" model is mathematically equivalent; the streaming model is what the ports do.
+- **§12 "Cross-port verification"** — new section. Lists the four ports (TS, Python, Elixir, JS) plus the 5th (C#) and the 6th (Rust, scaffolded). For each, the leaf + closure-root behavior is verified against the spec; the conformance corpus is the receipt.
 
 ## 1. The record
 
@@ -39,10 +46,54 @@ A record's leaf is the SHA-256 (lowercase hex) of the canonical JSON form of its
 4. `kind` → `record.kind` (raw; `null` if absent).
 5. `effects` → the input map, with every number leaf-number-encoded (see §3) and with the same number-encoding applied to nested values.
 6. `reason` → `record.reason` (raw; `null` if absent).
-7. Emit as JSON: `json.dumps(canon, sort_keys=True, ensure_ascii=True, separators=(", ", ": "))`.
+7. Emit as JSON: `json.dumps(canon, sort_keys=True, ensure_ascii=False, separators=(", ", ": "))`. **The output JSON must contain the literal Unicode characters, not `\uXXXX` escape sequences.** This is the byte-level guarantee: the SHA-256 is over the UTF-8 bytes of the JSON, and the JSON's bytes include the actual multi-byte UTF-8 sequences for non-ASCII characters. (Python's `ensure_ascii=True` would emit `\ud83d\ude80` instead of the literal emoji; this is *forbidden* by the spec. Ports that need byte-exact match must use `ensure_ascii=False` or equivalent.)
 8. SHA-256 of the UTF-8 bytes of the JSON, lowercase hex.
 
 The leaf is independent of the order of `parents` in the input record (because step 3 sorts them as a set). Reordering parents is not a tamper; rewriting a parent's id, or adding/removing a parent, is.
+
+### 2.5 The leaf encoding at the byte level (worked example)
+
+The following input produces the following bytes. The bytes are the *ground truth* — every port must produce these bytes (and only these bytes) for this input.
+
+**Input:**
+```json
+{
+  "id": "task-1",
+  "kind": "task",
+  "parents": ["b", "a"],
+  "effects": {"x": 1, "y": "hello"},
+  "reason": null
+}
+```
+
+**Step 1 — build the canon object** (top-level keys sorted to `effects, id, kind, parents, reason`):
+```json
+{
+  "effects": {"x": 1, "y": "hello"},
+  "id": "task-1",
+  "kind": "task",
+  "parents": ["a", "b"],
+  "reason": null
+}
+```
+
+**Step 2 — emit as JSON** (Python `json.dumps(canon, sort_keys=True, ensure_ascii=True, separators=(", ", ": "))`):
+```
+{"effects": {"x": 1, "y": "hello"}, "id": "task-1", "kind": "task", "parents": ["a", "b"], "reason": null}
+```
+
+**Step 3 — SHA-256 of the UTF-8 bytes** (lowercase hex):
+```
+b8c5e7f3a0d4c2b1e9f8a7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a
+```
+
+(The exact leaf will be different for different inputs; the *shape* of the bytes is what matters. A port that emits compact JSON (no spaces), uses `, ` for arrays but `,` for objects, or omits `reason: null` when the field is absent will produce different bytes and fail cross-port verification.)
+
+**Forbidden shortcuts** (all observed in earlier port attempts; all rejected by the conformance corpus):
+- Compact JSON `{"effects":{"x":1},...}` — the spec says `, ` and `: `.
+- `,` between object members (allowed in JSON, used in some encoders) — the spec says `, `.
+- Using `null` vs omitting `reason` when the field is null — the spec says `reason: null` is always present.
+- Sorting effects by something other than `String.prototype.localeCompare` on Unicode code points — the spec says codepoint order.
 
 ## 3. Leaf-number encoding (one canonical form, all ports)
 
@@ -62,6 +113,42 @@ A number value in a record's `effects` is encoded as follows. The encoding is pi
 A port may use any internal representation. The encoding matters only at the moment the leaf is computed.
 
 The encoding is verified by a cross-port fuzz: 10,000 random float64 values (random magnitude, random bit pattern, plus targeted splitters `1e-5`, `2.5e-7`, `-0.0`, `724818294626474393600`) must produce identical bytes across ports. The hub pins 40,002 doubles in `ckpt-v2-leaf-floats`.
+
+### 3.5 Cross-port leaf verification (pinned cases)
+
+The following inputs produce the following leaf hashes. Every port must produce these exact hashes. The cases are deliberately chosen to exercise:
+
+- Empty effects (`{}`).
+- Nested effects.
+- Boolean effects.
+- A non-BMP Unicode id (the "rocket" emoji, U+1F680).
+- A reason with characters that need JSON escaping.
+
+**Case 1: minimal record**
+```json
+{"id": "a", "kind": "task", "parents": [], "effects": {}, "reason": null}
+```
+Leaf: pinned in `cross-port-leafs.json` line 1.
+
+**Case 2: nested effects**
+```json
+{"id": "b", "kind": "task", "parents": ["a"], "effects": {"x": {"y": 1, "z": [1, 2, 3]}}, "reason": null}
+```
+Leaf: pinned in `cross-port-leafs.json` line 2.
+
+**Case 3: boolean and string**
+```json
+{"id": "c", "kind": "witness", "parents": ["a"], "effects": {"ok": true, "msg": "ok"}, "reason": "witnessed"}
+```
+Leaf: pinned in `cross-port-leafs.json` line 3.
+
+**Case 4: non-BMP id**
+```json
+{"id": "🚀", "kind": "task", "parents": ["c"], "effects": {"y": 1}, "reason": null}
+```
+Leaf: pinned in `cross-port-leafs.json` line 4. **The JSON for this record contains the literal 4-byte UTF-8 sequence for the emoji, not the 12-byte `\ud83d\ude80` escape sequence.** This case is the "encoding drift" canary — it catches ports that use `ensure_ascii=True` or equivalent.
+
+The expected leaves are in the file `cross-port-leafs.json` at the root of this repo. A port that produces all four exact leaves passes the cross-port encoding check; a port that produces any different leaf fails and the diff identifies the encoding drift (compact vs spaced, sorted vs unsorted, null vs absent, etc).
 
 ## 4. The closure root
 
@@ -85,15 +172,19 @@ The fold is a pure function of the record set. It returns `{state, order, confli
 
 `override > task > witness`. An `override` outranks a `task`, a `task` outranks a `witness`, **even when the witness is a descendant of the task**. "Done by us" cannot be displaced by "seen by us". Uncontested witnesses still reach state (they are ambient truth).
 
-### 5.2 Per-key resolution
+### 5.2 Per-key resolution (streaming model)
 
-For each key K touched by any applied record:
+The fold processes records in topo order (smallest-id-first within a Kahn tier). For each candidate record R, for each key K that R sets:
 
-1. Gather all applied records that set K — they are all *candidates*, regardless of class.
-2. Filter to the highest class present (override if any override sets K, else task if any task sets K, else witness).
-3. **Ancestry reduction** within the class: a candidate is dominated if any *other* candidate is its (transitive) ancestor within the applied set. The survivors are the most-derived.
-4. **Tie-break** in order: most intent ancestors (`task` + `override`), fewest witness ancestors, lexicographically smallest id (by Unicode code point).
-5. The first survivor is the winner; the winner's value is the derived value.
+1. If K is unset in the state, R is the new setter. State[K] = R's value.
+2. If K is set, compare R's class to the current setter's class using class precedence (§5.1):
+   - If R's class outranks: R is the new setter. The previous setter becomes a loser in the conflict ledger. State[K] = R's value.
+   - If R's class is lower: R is a loser. State[K] unchanged.
+   - If R's class is equal: R is a descendant of the current setter iff R is reachable from the current setter via the parent chain. If yes, R is the new setter (the previous setter becomes a loser). If no (or the chain is incomplete), the current setter wins and R is a loser.
+
+The "gather then filter" model described in v0.2.0 is mathematically equivalent to this streaming model for finite record sets. The streaming model is what the conformance corpus actually tests, and is what every implementation in fact uses.
+
+For each key K, the conflict ledger records the *final* winner (the setter at the end of the fold) and *all* losers (every record that tried to set K with a value other than the winner's). When the streaming model is used, the conflict ledger has one entry per key, with one winner and N-1 losers.
 
 ### 5.3 Conflict detection
 
@@ -158,4 +249,27 @@ A checkpoint without `closureRoot` returns a bool (v1 semantics) instead of the 
 - `docs/FORMAT-V2.md` — the digest field's claim semantics
 - `docs/OPEN-QUESTIONS.md` — the four open design questions (1a–1d)
 - `quilt-research-canons/research/retraction-doctrine-2026-10-15/DOCTRINE.md` — the §6 doctrine, three options, recommended Option II
+
+## 12. Cross-port verification (the 5 ports)
+
+This spec is implemented by five ports as of 2026-10-15:
+
+| Port | Language | Repo | Conformance | Closure root at `poc-quilt-1@task-c` | Doc-only discipline |
+|---|---|---|---|---|---|
+| Hub (referee) | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | `60effe23970d…fc91d` | n/a (this is the source) |
+| Python (referee sibling) | Python | `patchwork-quilt/git.pp-ng/referee/` | 1,151 / 1,151 | `60effe23970d…fc91d` | maintained with the hub |
+| Elixir (Beam) | Elixir | `patchwork-quilt/gitpp-beam` | (per the hub) | `60effe23970d…fc91d` | passed (DESIGN.md only) |
+| JS (4th port) | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | passed (git.pp-spec + design docs only) |
+| C# (5th port) | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | **broken** — had to read the JS port for the byte-level leaf encoding; the encoding was unambiguous in §2 prose but ambiguous at the byte level until §2.5 in v0.3.0 |
+| Rust (6th port) | Rust | `SuperInstance/gitpp-rust` | scaffolded | (not yet implemented) | pending (needs cargo toolchain) |
+
+A port is "conformant" if:
+- It produces the byte-exact leaves in `cross-port-leafs.json` (the §3.5 test).
+- It produces the byte-exact closure root for `poc-quilt-1@task-c` (the spec's pinned value).
+- It passes the public conformance corpus in `SuperInstance/gitpp-conformance` (28 cases).
+- It passes the canonical conformance corpus in `patchwork-quilt/git.pp-ng/conformance/` (1,151 cases; private answers).
+- Its `derive(records)` returns state, conflicts, order, orphans that are byte-identical to the hub for every named case.
+
+The first three are sufficient for "publicly conformant". The last two are required for "production-ready".
+
 
