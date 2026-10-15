@@ -1,13 +1,19 @@
 # Cross-port verification (30/30 byte-for-byte equivalent)
 
-The 4 ports in this ecosystem that are written from the spec v0.3.0 alone produce byte-for-byte identical output:
+The 5 ports in this ecosystem that are written from the spec v0.3.0 alone produce byte-for-byte identical output:
 
-- `git.pp-ng/referee/` — Python (the validator / reference)
-- `SuperInstance/gitpp-js` — JavaScript
-- `SuperInstance/gitpp-cs` — C# / .NET 9
-- `SuperInstance/gitpp-pl` — Perl 5
+- `SuperInstance/gitpp-c` — C99 (the 7th port, stdlib only, manual SHA-256)
+- `git.pp-ng/referee/` — Python (the validator / reference, 2nd port)
+- `SuperInstance/gitpp-js` — JavaScript (4th port)
+- `SuperInstance/gitpp-cs` — C# / .NET 9 (5th port)
+- `SuperInstance/gitpp-pl` — Perl 5 (6th port)
 
-**Receipt: 30/30 conformance cases agree. 4/4 pinned cross-port leaves match.**
+Plus the original:
+
+- `patchwork-quilt/git.pp-ng` — TypeScript (the hub, 1st port)
+- `patchwork-quilt/gitpp-beam` — Elixir (3rd port, doc-only passed)
+
+**Receipt: 30/30 conformance cases agree across 5 ports. 4/4 pinned cross-port leaves match. 0 disagreements.**
 
 The cross-port artifact at [SuperInstance/gitpp-cross-port](https://github.com/SuperInstance/gitpp-cross-port) is the running test. If a port produces different bytes, it's a bug in the port, not in the spec.
 
