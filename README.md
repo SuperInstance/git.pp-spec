@@ -29,3 +29,32 @@ A port is conformant if its leaf, closure root, fold, and three-way verdict are 
 4. Write the port from the spec alone. If you can't answer a question from the spec, that's a finding in your PR — not a permission to read the source.
 
 This is the same discipline the existing ports followed (the doc-only-discipline statement is on each port's README), and it's the same test that proves the spec is complete.
+
+## Cross-port verification (30/30 byte-for-byte equivalent)
+
+[SuperInstance/gitpp-cross-port](https://github.com/SuperInstance/gitpp-cross-port) runs the same 30 cases through 4 ports (Python, JS, C#, Perl) and proves they produce byte-for-byte identical closure roots.
+
+**Receipt: 30/30 cases agree. 4/4 pinned cross-port leaves match. 0 disagreements.**
+
+The pinned closure root at `poc-quilt-1@task-c` (used as the cross-port gate):
+
+```
+60effe23970d8a5cc837636c44685502361288c1f00577e9addfa10cbd4fc91d
+```
+
+The 4 pinned cross-port leaf verification cases (in `cross-port-leafs.json`):
+
+| Case | Input | Leaf |
+|------|-------|------|
+| 1 | minimal `{id:"a", kind:"task", parents:[], effects:{}, reason:null}` | `229f56e0…3124` |
+| 2 | nested effects `{x: {y:1, z:[1,2,3]}}` | `64a3cd29…6ad9` |
+| 3 | boolean + string effects | `97fd12ee…52f7` |
+| 4 | non-BMP id (the rocket emoji 🚀) | `83d31b81…5e97` |
+
+If a port produces a different leaf or root, that's a bug in the port, not in the spec. The cross-port artifact at [gitpp-cross-port](https://github.com/SuperInstance/gitpp-cross-port) is the running test that catches this.
+
+## Versions
+
+- **v0.3.0** (current): added §2.5 worked byte-level example, §3.5 4-case cross-port verification, §5.2 streaming fold, §12 cross-port verification table. Made the spec precise enough that 4 ports written from prose alone converge to byte-identical output.
+- **v0.2.0**: 11 sections covering the full record format, the leaf, the closure root, the fold, the conflicts, the conformance corpus.
+- **v0.1.0**: initial draft (kept for archeology).

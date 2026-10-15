@@ -1,3 +1,16 @@
+# Cross-port verification (30/30 byte-for-byte equivalent)
+
+The 4 ports in this ecosystem that are written from the spec v0.3.0 alone produce byte-for-byte identical output:
+
+- `git.pp-ng/referee/` — Python (the validator / reference)
+- `SuperInstance/gitpp-js` — JavaScript
+- `SuperInstance/gitpp-cs` — C# / .NET 9
+- `SuperInstance/gitpp-pl` — Perl 5
+
+**Receipt: 30/30 conformance cases agree. 4/4 pinned cross-port leaves match.**
+
+The cross-port artifact at [SuperInstance/gitpp-cross-port](https://github.com/SuperInstance/gitpp-cross-port) is the running test. If a port produces different bytes, it's a bug in the port, not in the spec.
+
 # How to use this spec — for port authors
 
 ## Step 0: Read the contract
