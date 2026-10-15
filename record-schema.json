@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SuperInstance/git.pp-spec/blob/main/record.schema.json",
+  "title": "git.pp record",
+  "description": "The canonical schema for a git.pp record (format v2). The five content fields plus the optional digest dialect field.",
+  "type": "object",
+  "required": ["id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier. Must be free of \\n and : (the closure root format uses these as delimiters).",
+      "pattern": "^[^\n:]+$"
+    },
+    "parents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Set of record ids this record completed against. Treated as a set; ordering carries no meaning."
+    },
+    "kind": {
+      "type": ["string", "null"],
+      "enum": ["task", "witness", "override", null],
+      "default": null,
+      "description": "Class of the record. The fold uses this for the absolute precedence override > task > witness."
+    },
+    "effects": {
+      "type": "object",
+      "default": {},
+      "description": "Map of state-key to value. Values may be number, string, boolean, array, or object. Numbers must be in the IEEE-754 float64 domain.",
+      "additionalProperties": {
+        "anyOf": [
+          { "type": "number" },
+          { "type": "string" },
+          { "type": "boolean" },
+          { "type": "array" },
+          { "type": "object" },
+          { "type": "null" }
+        ]
+      }
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Human-supplied justification. The fold does not read it; the leaf does (per CHECKPOINT-V2.md).",
+      "maxLength": 10000
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Format v2 dialect field. The SHA-256 of the record's content leaf. A claim about the record; the fold never reads it. Records with a well-formed digest that disagrees with the recomputed leaf are degraded to v1 (the record passes through unchanged, the disagreement is reported). A malformed digest is ignored."
+    },
+    "repo": {
+      "type": "string",
+      "description": "Internal metadata. The repo that produced this copy of the record. Not part of the fold's input; surfaced for the collection layer."
+    },
+    "orphan": {
+      "type": "boolean",
+      "default": false,
+      "description": "Internal metadata. Set by the Worker if the record is excluded from the applied set due to a missing parent."
+    },
+    "recordsBehind": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Internal metadata. The number of applied records whose freshness this witness does not yet reflect."
+    }
+  },
+  "additionalProperties": false
+}
