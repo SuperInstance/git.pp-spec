@@ -232,6 +232,36 @@ A record is an orphan if any of its `parents` is not in the applied set. The orp
 
 **Cycle-affected records are orphans for output purposes.** They are excluded from the fold exactly like missing-parent records, and they MUST appear in the returned `orphans` list. A port that detects cycles to exclude them from the fold but forgets to report them has made the records vanish from the result entirely — see corpus cases `d13`, `d14`, `d23`.
 
+### 5.6 Setter provenance (nudging is a read-then-write loop)
+
+`derive()` returns `{state, order, conflicts, orphans}`. `state` is a flat
+`{key: value}` map, so on its own it does **not** say which record set a key.
+That information survives only where two records happened to contest the same
+key, because `conflicts[].winner` records the setter there.
+
+This makes a same-class nudge unreliable. §5.2 breaks a class tie by ancestry
+first and id second, so a nudge parented on the *wrong* record neither
+reliably wins nor reliably loses:
+
+- nudge `a-nudge` (sorts before the winner) lands
+- nudge `z-nudge` (sorts after)  is silently discarded
+- same record, same kind, same reason, opposite outcome
+
+The outcome depends on nothing but the nudge's own id. An agent cannot
+author a reliable nudge without knowing the current setter, and the fold
+withholds the setter for exactly the keys that are most stable.
+
+**A port MUST therefore also return `setters`: `{key: record id}` for every
+key present in `state`, contested or not.**
+
+- The fold already computes this; it currently discards it.
+- `conflicts` becomes a *diff* — what changed, who lost — rather than the only
+  provenance in the result.
+- This does **not** change any leaf or closure root, so it is additive to §7
+  conformance and cannot invalidate a pinned digest.
+- A nudge authored as `{id, kind, parents: [setters[key]], effects: {key: new}}`
+  now lands deterministically, whatever the nudge's own id sorts as.
+
 ## 6. Three-way checkpoint verdict
 
 A checkpoint over `(at, state, closureRoot)` against a record set returns one of three verdicts:
@@ -315,6 +345,7 @@ A port is "conformant" if:
 - It passes the public conformance corpus in `SuperInstance/gitpp-conformance` (28 cases).
 - It passes the canonical conformance corpus in `patchwork-quilt/git.pp-ng/conformance/` (1,151 cases; private answers).
 - Its `derive(records)` returns state, conflicts, order, orphans that are byte-identical to the hub for every named case.
+- It returns a `setters` map (§5.6) for every key in `state`, not only for contested keys.
 
 The first three are sufficient for "publicly conformant". The last two are required for "production-ready".
 
