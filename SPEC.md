@@ -117,7 +117,9 @@ A number value in a record's `effects` is encoded as follows. The encoding is pi
 | `NaN`, `+Inf`, `-Inf` | out of pinned domain, reject | (the record is malformed) |
 | `string`, `array`, `object` | unchanged | `1.5e20` (number) and `"1.5e20"` (string) are **different** inputs and must produce different leaves |
 
-A port MUST distinguish a JSON number from a JSON **string** that happens to contain a valid number literal. This is not a theoretical concern: several standard-library JSON decoders return an indistinguishable scalar for both (`JSON::PP` in Perl is one), so a naive `looks_like_number()` test silently turns strings into numbers. The cross-port corpus now carries 3,000 records that pair a real number with a numeric-string twin for exactly this reason.
+**Every JSON number is a float64.** A port MUST NOT let its host decoder choose a different numeric type: Python's `json` returns an arbitrary-precision `int` for a bare integer literal, `JSON::PP` returns a `string` for one too large for a UV/IV (and an exact `int64` for one that fits, which no flag can distinguish from a string), and `System.Text.Json` returns an `int64`. All three shipped this. `{"x": 1000000000000000000}` must be `1e+18` (scientific, since `|v| >= 1e16`), not `1000000000000000000`. **The fix always belongs at the decode boundary, never in the encoder.** Python: `json.loads(..., parse_int=float)`. C#: `Numbers.ParseRecords`. Perl cannot recover it for literals in [2^63, 1e21) and documents the limitation.
+
+A port MUST also distinguish a JSON number from a JSON **string** that happens to contain a valid number literal. This is not a theoretical concern: several standard-library JSON decoders return an indistinguishable scalar for both (`JSON::PP` in Perl is one), so a naive `looks_like_number()` test silently turns strings into numbers. The cross-port corpus now carries 3,000 records that pair a real number with a numeric-string twin for exactly this reason.
 
 A port may use any internal representation. The encoding matters only at the moment the leaf is computed.
 
@@ -276,7 +278,7 @@ This spec is implemented by seven ports as of 2026-10-15:
 | # | Port | Language | Repo | Conformance | Closure root | Fuzz (200 rec) | Doc-only |
 |---|---|---|---|---|---|---|---|
 | 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | `60effe23970d…fc91d` | n/a (source) | n/a |
-| 2 | Python | Python | `git.pp-ng/referee/` | 1,151 / 1,151 | `60effe23970d…fc91d` | 200/200 | maintained with hub |
+| 2 | Python | Python | `gitpp-doctor` v0.2.3 | 1,151 / 1,151 | `60effe23970d…fc91d` | 200/200 | maintained with hub |
 | 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | `60effe23970d…fc91d` | n/a | passed (DESIGN.md) |
 | 4 | JS | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (spec + design) |
 | 5 | C# | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (after v0.3.0 §2.5 + v0.3.1 1e16 limit) |
