@@ -281,7 +281,7 @@ This spec is implemented by seven ports as of 2026-10-15:
 | 4 | JS | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (spec + design) |
 | 5 | C# | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (after v0.3.0 §2.5 + v0.3.1 1e16 limit) |
 | 6 | Perl | Perl 5 | `SuperInstance/gitpp-pl` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (spec only) |
-| 7 | C | C99, stdlib | `SuperInstance/gitpp-c` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (spec only) |
+| 7 | C | C99, stdlib | `SuperInstance/gitpp-c` v0.2.0 | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | 25/25 fold | passed (spec only) |
 | - | Rust | Rust | `SuperInstance/gitpp-rust` | scaffolded | (not yet) | (not yet) | pending (needs cargo) |
 
 **Cross-port fuzz test (spec §3 verification):** all 5 fold ports
