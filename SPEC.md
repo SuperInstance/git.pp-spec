@@ -262,6 +262,29 @@ key present in `state`, contested or not.**
 - A nudge authored as `{id, kind, parents: [setters[key]], effects: {key: new}}`
   now lands deterministically, whatever the nudge's own id sorts as.
 
+### 5.7 Gated application (optional)
+
+§5.6 makes a nudge reliably expressible. It does not make it *right*. A
+substrate that a development agent drives needs a place to ask "should this
+apply at all?" before the record is written, and a defined answer when the
+question cannot be answered.
+
+This is deliberately **not** part of the fold. The fold is pure; a gate that
+consults anything outside the record set is not the fold. A gate sits in
+front of it, and its routing lives in code, not in whatever model answered.
+
+Three actions — `act`, `review`, `block` — and one rule that outranks the
+rest: **absent signal is not consent.** A gate that cannot answer blocks. A
+gate that treats an unreachable model as approval will authorise everything.
+
+[`gitpp-gate`](https://github.com/SuperInstance/gitpp-gate) is one
+implementation, using TypeSafe's Jev for calibrated structured decisions.
+Its measurements are the reason the intent gate is not permitted to block:
+on a thin synthetic state, a well-founded nudge scored 0.35 and an
+unjustified one 0.07 — real separation at the wrong scale, so a cutoff that
+admits the bad case also blocks the good one. The parent gate, which does
+separate (0.61 vs 0.15), carries the blocking.
+
 ## 6. Three-way checkpoint verdict
 
 A checkpoint over `(at, state, closureRoot)` against a record set returns one of three verdicts:
