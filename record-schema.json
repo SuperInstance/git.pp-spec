@@ -4,7 +4,9 @@
   "title": "git.pp record",
   "description": "The canonical schema for a git.pp record (format v2). The five content fields plus the optional digest dialect field.",
   "type": "object",
-  "required": ["id"],
+  "required": [
+    "id"
+  ],
   "properties": {
     "id": {
       "type": "string",
@@ -14,15 +16,19 @@
     },
     "parents": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": [],
       "description": "Set of record ids this record completed against. Treated as a set; ordering carries no meaning."
     },
     "kind": {
-      "type": ["string", "null"],
-      "enum": ["task", "witness", "override", null],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
-      "description": "Class of the record. The fold uses this for the absolute precedence override > task > witness."
+      "description": "Class of the record. The fold uses this for the absolute precedence override > task > witness. Per SPEC §1.1, OTHER VALUES ARE ACCEPTED and their semantics are out of scope for the fold, so this schema does not constrain the value. It previously carried an enum of the three known kinds, which made the schema STRICTER than the spec it is supposed to describe -- a normative artifact disagreeing with the normative document."
     },
     "effects": {
       "type": "object",
@@ -30,17 +36,32 @@
       "description": "Map of state-key to value. Values may be number, string, boolean, array, or object. Numbers must be in the IEEE-754 float64 domain.",
       "additionalProperties": {
         "anyOf": [
-          { "type": "number" },
-          { "type": "string" },
-          { "type": "boolean" },
-          { "type": "array" },
-          { "type": "object" },
-          { "type": "null" }
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "array"
+          },
+          {
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
         ]
       }
     },
     "reason": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Human-supplied justification. The fold does not read it; the leaf does (per CHECKPOINT-V2.md).",
       "maxLength": 10000
@@ -60,7 +81,10 @@
       "description": "Internal metadata. Set by the Worker if the record is excluded from the applied set due to a missing parent."
     },
     "recordsBehind": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "description": "Internal metadata. The number of applied records whose freshness this witness does not yet reflect."
     }
