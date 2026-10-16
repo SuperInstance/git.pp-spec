@@ -99,6 +99,11 @@ b8c5e7f3a0d4c2b1e9f8a7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a
 
 A number value in a record's `effects` is encoded as follows. The encoding is pinned byte-for-byte across every port.
 
+**Scope note.** §3 pins the encoding of the **leaf** only. The serialization of the *state* returned by `derive()` is deliberately **not** pinned: ports may serialize the same float64 differently (JavaScript's `JSON.stringify(1e-5)` gives `0.00001`, Python's `repr(1e-5)` gives `1e-05`) without any of them being wrong. Two consequences:
+
+- Cross-port **fold** conformance must compare state *by value*, not by bytes. See [`gitpp-fold-conformance`](https://github.com/SuperInstance/gitpp-fold-conformance).
+- A consumer that needs a byte-stable state must re-encode each value through the §3 rules before serializing. The leaf is the only byte-stable commitment the spec makes.
+
 | Input | Encoded form | Example |
 |---|---|---|
 | bool | unchanged | `true` → `true` |
@@ -110,7 +115,9 @@ A number value in a record's `effects` is encoded as follows. The encoding is pi
 | `-0.0` (signed zero) | `0` | (the sign is dropped) |
 | `NaN`, `+Inf`, `-Inf` | out of pinned domain, reject | (the record is malformed) |
 | `NaN`, `+Inf`, `-Inf` | out of pinned domain, reject | (the record is malformed) |
-| `string`, `array`, `object` | unchanged | (the encoding is for numbers only) |
+| `string`, `array`, `object` | unchanged | `1.5e20` (number) and `"1.5e20"` (string) are **different** inputs and must produce different leaves |
+
+A port MUST distinguish a JSON number from a JSON **string** that happens to contain a valid number literal. This is not a theoretical concern: several standard-library JSON decoders return an indistinguishable scalar for both (`JSON::PP` in Perl is one), so a naive `looks_like_number()` test silently turns strings into numbers. The cross-port corpus now carries 3,000 records that pair a real number with a numeric-string twin for exactly this reason.
 
 A port may use any internal representation. The encoding matters only at the moment the leaf is computed.
 
@@ -186,6 +193,8 @@ The fold processes records in topo order (smallest-id-first within a Kahn tier).
 
 The "gather then filter" model described in v0.2.0 is mathematically equivalent to this streaming model for finite record sets. The streaming model is what the conformance corpus actually tests, and is what every implementation in fact uses.
 
+> **Watch the direction of the ancestry test.** Within the winning class, a candidate is *dominated* if **it is an ancestor of another candidate**. Survivors are therefore the **most-derived** records. Asking the inverse question — *"is another candidate my ancestor?"* — selects the *most-ancestral* record instead, which silently reverses every contested key in a chain. Four ports shipped this inversion at some point; the corpus case `d03` exists solely to catch it.
+
 For each key K, the conflict ledger records the *final* winner (the setter at the end of the fold) and *all* losers (every record that tried to set K with a value other than the winner's). When the streaming model is used, the conflict ledger has one entry per key, with one winner and N-1 losers.
 
 ### 5.3 Conflict detection
@@ -201,6 +210,8 @@ Kahn's algorithm with smallest-id-first. Ties broken by Unicode code point. Orph
 ### 5.5 Orphans
 
 A record is an orphan if any of its `parents` is not in the applied set. The orphan's effect is *excluded* from the state; the orphan is *preserved* in the output. The orphan's descendants are *not* auto-orphaned (the fold runs on what stands).
+
+**Cycle-affected records are orphans for output purposes.** They are excluded from the fold exactly like missing-parent records, and they MUST appear in the returned `orphans` list. A port that detects cycles to exclude them from the fold but forgets to report them has made the records vanish from the result entirely — see corpus cases `d13`, `d14`, `d23`.
 
 ## 6. Three-way checkpoint verdict
 
