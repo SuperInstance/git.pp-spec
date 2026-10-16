@@ -212,6 +212,12 @@ A checkpoint over `(at, state, closureRoot)` against a record set returns one of
 | `STATE-ONLY` | state matches but the closure has changed since the checkpoint (grown, shrunk, or a member re-versioned) — the honest v1 answer, now **labelled**, never a silent `VERIFIED` |
 | `MISMATCH` | the state differs (or the checkpoint shape is unusable) |
 
+**Order matters**: a port must check **state first**, then root. The reverse order
+(was the case in gitpp-js v0.1.2 and earlier) can return `VERIFIED` when a
+user submits the correct closure root but the wrong state, hiding real drift.
+v0.1.3 fixes this by checking state first; the bug was found via the
+hub-api dashboard.
+
 The shrunk/swapped-vs-grown classification is a **captain's call**; ports report `STATE-ONLY` for any closure change by default.
 
 ## 7. Conformance
