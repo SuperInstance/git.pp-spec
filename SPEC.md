@@ -261,16 +261,17 @@ This spec is implemented by seven ports as of 2026-10-15:
 | 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | `60effe23970d…fc91d` | n/a (source) | n/a |
 | 2 | Python | Python | `git.pp-ng/referee/` | 1,151 / 1,151 | `60effe23970d…fc91d` | 200/200 | maintained with hub |
 | 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | `60effe23970d…fc91d` | n/a | passed (DESIGN.md) |
-| 4 | JS | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (spec + design) |
-| 5 | C# | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (after v0.3.0 §2.5 + v0.3.1 1e16 limit) |
-| 6 | Perl | Perl 5 | `SuperInstance/gitpp-pl` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (spec only) |
-| 7 | C | C99, stdlib | `SuperInstance/gitpp-c` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (spec only) |
+| 4 | JS | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | 500/500 | passed (spec + design) |
+| 5 | C# | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | 500/500 | passed (after v0.3.0 §2.5 + v0.3.1 1e16 limit) |
+| 6 | Perl | Perl 5 | `SuperInstance/gitpp-pl` | 28 / 28 public | `60effe23970d…fc91d` | 500/500 | passed (spec only) |
+| 7 | C | C99, stdlib | `SuperInstance/gitpp-c` | 28 / 28 public | `60effe23970d…fc91d` | 500/500 | passed (spec only) |
 | - | Rust | Rust | `SuperInstance/gitpp-rust` | scaffolded | (not yet) | (not yet) | pending (needs cargo) |
 
 **Cross-port fuzz test (spec §3 verification):** all 5 fold ports
 (Python, JS, C, C#, Perl) produce **byte-identical SHA-256 leaves**
-on 200/200 random float64 records (10,000+ generated, 200 used for
-the fast run; full corpus in progress). Fuzz runner is in
+on 500/500 random float64 records (17,004 generated; 500 used for
+the fast run; full corpus in progress, 50/17004 in 16.2s as of
+last check). Fuzz runner is in
 `SuperInstance/gitpp-cross-port/fuzz.mjs`.
 
 A port is "conformant" if:
