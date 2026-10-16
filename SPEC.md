@@ -123,6 +123,23 @@ A port MUST also distinguish a JSON number from a JSON **string** that happens t
 
 A port may use any internal representation. The encoding matters only at the moment the leaf is computed.
 
+> **BEAM note (measured on OTP 25, `erlang-base` 1:25.2.3).** No built-in BEAM float format matches this section, so an Elixir/Erlang port must hand-roll the encoder:
+>
+> | value | `float_to_binary(V, [short])` | §3 requires |
+> |---|---|---|
+> | `1.0e-5` | `1.0e-5` | `1e-05` |
+> | `2.5e-7` | `2.5e-7` | `2.5e-07` |
+> | `0.0` | `0.0` | `0` |
+> | `1.5e20` | `1.5e20` | scientific, 15/16/17 |
+> | `9007199254740992.0` | `9.007199254740992e15` | `9007199254740992` |
+> | `1.0e-4` | `0.0001` | `0.0001` (the only match) |
+>
+> Three BEAM-specific traps, all found by writing the port rather than by reading the manual:
+>
+> 1. **Integers are arbitrary-precision by default.** `1000000000000000000` is an integer, not a float, so the float64-domain rule above fails *by construction* rather than by accident. Every bare integer literal in a record is a bignum. This is the same defect class as `json` and `System.Text.Json`, but structural.
+> 2. **`=:=` is type-exact.** `trunc(F) =:= F` is **always false** for a float, so a perfectly natural-looking integral check silently sends every integral float down the wrong branch. Use `float(trunc(F)) =:= F`.
+> 3. **UTF-8 binary comparison *is* code-point order** (`lists:sort/1` over binaries gives `["0","a","z","~",🚀]`). §5.4 ordering comes free here — it is the one place BEAM is easier than JavaScript, Perl, or Python, all of which need explicit code-point iteration.
+
 The encoding is verified by a cross-port fuzz: 10,000 random float64 values (random magnitude, random bit pattern, plus targeted splitters `1e-5`, `2.5e-7`, `-0.0`, `724818294626474393600`) must produce identical bytes across ports. The hub pins 40,002 doubles in `ckpt-v2-leaf-floats`.
 
 ### 3.5 Cross-port leaf verification (pinned cases)
