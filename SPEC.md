@@ -254,16 +254,24 @@ A checkpoint without `closureRoot` returns a bool (v1 semantics) instead of the 
 
 ## 12. Cross-port verification (the 5 ports)
 
-This spec is implemented by five ports as of 2026-10-15:
+This spec is implemented by seven ports as of 2026-10-15:
 
-| Port | Language | Repo | Conformance | Closure root at `poc-quilt-1@task-c` | Doc-only discipline |
-|---|---|---|---|---|---|
-| Hub (referee) | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | `60effe23970d…fc91d` | n/a (this is the source) |
-| Python (referee sibling) | Python | `patchwork-quilt/git.pp-ng/referee/` | 1,151 / 1,151 | `60effe23970d…fc91d` | maintained with the hub |
-| Elixir (Beam) | Elixir | `patchwork-quilt/gitpp-beam` | (per the hub) | `60effe23970d…fc91d` | passed (DESIGN.md only) |
-| JS (4th port) | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | passed (git.pp-spec + design docs only) |
-| C# (5th port) | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | **broken** — had to read the JS port for the byte-level leaf encoding; the encoding was unambiguous in §2 prose but ambiguous at the byte level until §2.5 in v0.3.0 |
-| Rust (6th port) | Rust | `SuperInstance/gitpp-rust` | scaffolded | (not yet implemented) | pending (needs cargo toolchain) |
+| # | Port | Language | Repo | Conformance | Closure root | Fuzz (200 rec) | Doc-only |
+|---|---|---|---|---|---|---|---|
+| 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | `60effe23970d…fc91d` | n/a (source) | n/a |
+| 2 | Python | Python | `git.pp-ng/referee/` | 1,151 / 1,151 | `60effe23970d…fc91d` | 200/200 | maintained with hub |
+| 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | `60effe23970d…fc91d` | n/a | passed (DESIGN.md) |
+| 4 | JS | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (spec + design) |
+| 5 | C# | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (after v0.3.0 §2.5 + v0.3.1 1e16 limit) |
+| 6 | Perl | Perl 5 | `SuperInstance/gitpp-pl` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (spec only) |
+| 7 | C | C99, stdlib | `SuperInstance/gitpp-c` | 28 / 28 public | `60effe23970d…fc91d` | 200/200 | passed (spec only) |
+| - | Rust | Rust | `SuperInstance/gitpp-rust` | scaffolded | (not yet) | (not yet) | pending (needs cargo) |
+
+**Cross-port fuzz test (spec §3 verification):** all 5 fold ports
+(Python, JS, C, C#, Perl) produce **byte-identical SHA-256 leaves**
+on 200/200 random float64 records (10,000+ generated, 200 used for
+the fast run; full corpus in progress). Fuzz runner is in
+`SuperInstance/gitpp-cross-port/fuzz.mjs`.
 
 A port is "conformant" if:
 - It produces the byte-exact leaves in `cross-port-leafs.json` (the §3.5 test).
