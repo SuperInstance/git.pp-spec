@@ -102,11 +102,13 @@ A number value in a record's `effects` is encoded as follows. The encoding is pi
 | Input | Encoded form | Example |
 |---|---|---|
 | bool | unchanged | `true` → `true` |
-| `int` with `|v| < 1e21` | exact integer digits | `9007199254740993` → the double `9007199254740992` (which is the IEEE-754 nearest double) → `9007199254740992` |
-| `int` with `|v| >= 1e21` | out of pinned domain, reject | (the record is malformed) |
+| finite `float` with `|v| < 1e16` and `v.is_integer() == true` | exact integer digits | `2.0` → `2`, `9007199254740992.0` → `9007199254740992` |
+| finite `float` with integral value but `|v| >= 1e16` (does not fit safely in int64) | shortest round-trip decimal, scientific | `7.2e20` → `7.2e+20` |
+| finite `float` with `|v| < 1e16` and non-integral | shortest round-trip decimal, scientific when `decpt ≤ -4` or `> 16` | `1e-5` → `1e-05`, `2.5e-7` → `2.5e-07`, `0.00001` → `0.00001` |
+| `int` (record supplied as JSON integer literal) | exact integer digits | `1` → `1` |
+| finite `float` with `|v| >= 1e21` | out of pinned domain, reject | (the record is malformed) |
 | `-0.0` (signed zero) | `0` | (the sign is dropped) |
-| finite `float` with integral value (`v.is_integer() == true` and `|v| < 1e21`) | exact integer digits | `2.0` → `2` |
-| finite `float` with `|v| < 1e21` and non-integral | shortest round-trip decimal, scientific when `decpt ≤ -4` or `> 16` | `1e-5` → `1e-05`, `2.5e-7` → `2.5e-07`, `0.00001` → `0.00001` |
+| `NaN`, `+Inf`, `-Inf` | out of pinned domain, reject | (the record is malformed) |
 | `NaN`, `+Inf`, `-Inf` | out of pinned domain, reject | (the record is malformed) |
 | `string`, `array`, `object` | unchanged | (the encoding is for numbers only) |
 
