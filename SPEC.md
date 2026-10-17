@@ -233,6 +233,10 @@ The tie-break in that case is §5.4's: **among equal-class survivors that are mu
 
 For each key K, the conflict ledger records the *final* winner (the setter at the end of the fold) and *all* losers (every record that tried to set K with a value other than the winner's). When the streaming model is used, the conflict ledger has one entry per key, with one winner and N-1 losers.
 
+**`losers` is listed in the §5.4 order sequence** — the same order `order` uses, filtered to the losers. The text above fixes the *membership* of that set; without a stated order, three ports emitted three different serialisations of the same fold, and a consumer that hashes or diffs a ledger gets different bytes for identical semantics. The ledger is a receipt, so its serialisation is part of the contract.
+
+> Added after a generated corpus produced the minimal witness. With records `m(override, x=2)`, `z(witness, x=3)`, `a(override, x=1, parents:[z])`, `order` is `["m","z","a"]` and the winner is `m`, so the losers are `z` and `a` — and the order sequence gives `["z","a"]` while sorted gives `["a","z"]`. Both are defensible readings of "N-1 losers", which is set language. Small cases cannot separate the two readings, which is why 29 hand-written cases never saw it: a case with one loser has only one possible ordering.
+
 ### 5.3 Conflict detection
 
 After resolution, for each key K:
