@@ -110,7 +110,8 @@ A number value in a record's `effects` is encoded as follows. The encoding is pi
 | finite `float` with `|v| < 1e16` and `v.is_integer() == true` | exact integer digits | `2.0` → `2`, `9007199254740992.0` → `9007199254740992` |
 | finite `float` with integral value but `|v| >= 1e16` (does not fit safely in int64) | shortest round-trip decimal, scientific | `7.2e20` → `7.2e+20` |
 | finite `float` with `|v| < 1e16` and non-integral | shortest round-trip decimal, scientific when `decpt ≤ -4` or `> 16` | `1e-5` → `1e-05`, `2.5e-7` → `2.5e-07`, `0.00001` → `0.00001` |
-| `int` (record supplied as JSON integer literal) | exact integer digits | `1` → `1` |
+| `int` (record supplied as JSON integer literal, `|v| < 1e16`) | exact integer digits | `1` → `1` |
+| `int` (record supplied as JSON integer literal, `|v| >= 1e16`) | **treated as the float64 it becomes** — the domain rule, not the spelling rule | `724818294626474393600` → `7.248182946264744e+20` |
 | finite `float` with `|v| >= 1e21` | out of pinned domain, reject | (the record is malformed) |
 | `-0.0` (signed zero) | `0` | (the sign is dropped) |
 | `NaN`, `+Inf`, `-Inf` | out of pinned domain, reject | (the record is malformed) |
