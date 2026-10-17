@@ -207,6 +207,12 @@ The fold is a pure function of the record set. It returns `{state, order, confli
 
 **Unclassifiable records rank below `witness`.** A record whose `kind` is `null` or is not one of the three names has no class, and the fold must still rank it (§5.2). Such a record ranks **lowest**: it can win an uncontested key, and it loses every contest against any classifiable record, whatever their relationship in the ancestry DAG. An unclassifiable record never displaces a classifiable one.
 
+An unrecognised `kind` **string** is not malformed. §1.1's malformed rule covers a record *missing* a content field; a record carrying an unrecognised value for `kind` is accepted and ranked lowest by this rule. Only a missing field makes a record malformed.
+
+**Unclassifiable records are ranked `lowest` as a single class.** They are equal to each other, so a contest between two of them is decided by the equal-class rule in §5.2 step 3 — ancestry first, then topo order — exactly as for any other same-class pair. A contest between an unclassifiable record and a classifiable one is decided by class alone, and the classifiable record always wins.
+
+> This closes a gap the v0.4.6 fix itself introduced. The first draft of this clause said an unclassifiable record "never displaces a classifiable one", which settles a mixed contest but is silent when *neither* record is classifiable, and silent on whether two unclassifiable records count as "equal" for the §5.2 step 3 tie-break. An independent adjudicator scored the text as not settling the all-unclassifiable contest at 0.700 against 0.340, and the all-unclassifiable ancestry case at 0.790 against 0.860 — a near-tie, which is the signature of a clause that a careful reader can talk themselves either way out of. Both are now stated. Self-auditing a fix is not optional: the gap was found by probing the *new* text, not the old.
+
 ### 5.2 Per-key resolution (streaming model)
 
 The fold processes records in topo order (smallest-id-first within a Kahn tier). For each candidate record R, for each key K that R sets:
