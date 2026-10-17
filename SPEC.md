@@ -345,21 +345,33 @@ A checkpoint without `closureRoot` returns a bool (v1 semantics) instead of the 
 
 This spec is implemented by seven ports as of 2026-10-15:
 
-| # | Port | Language | Repo | Conformance | Closure root | Fuzz (200 rec) | Doc-only |
+| # | Port | Language | Repo | Conformance | Leaf fuzz | Fold | Doc-only |
 |---|---|---|---|---|---|---|---|
-| 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | `60effe23970d…fc91d` | n/a (source) | n/a |
-| 2 | Python | Python | `gitpp-doctor` v0.2.3 | 1,151 / 1,151 | `60effe23970d…fc91d` | 200/200 | maintained with hub |
-| 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | `60effe23970d…fc91d` | n/a | passed (DESIGN.md) |
-| 4 | JS | JavaScript (ESM) | `SuperInstance/gitpp-js` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (spec + design) |
-| 5 | C# | C# / .NET 9 | `SuperInstance/gitpp-cs` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (after v0.3.0 §2.5 + v0.3.1 1e16 limit) |
-| 6 | Perl | Perl 5 | `SuperInstance/gitpp-pl` | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | passed (spec only) |
-| 7 | C | C99, stdlib | `SuperInstance/gitpp-c` v0.2.0 | 28 / 28 public | `60effe23970d…fc91d` | 1000/1000 | 25/25 fold | passed (spec only) |
-| - | Rust | Rust | `SuperInstance/gitpp-rust` | scaffolded | (not yet) | (not yet) | pending (needs cargo) |
+| 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | n/a (source) | n/a | n/a |
+| 2 | Python | Python | `gitpp-doctor` v0.2.6 | 1,151 / 1,151 | 20,043 / 20,043 | 29 / 29 | maintained with hub |
+| 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | n/a | n/a | passed (DESIGN.md) |
+| 4 | JS | JavaScript (ESM) | `gitpp-js` v0.1.6 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (spec + design) |
+| 5 | C# | C# / .NET 9 | `gitpp-cs` v0.3.4 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (after v0.3.0 §2.5) |
+| 6 | Perl | Perl 5 | `gitpp-pl` v0.1.9 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (spec only) |
+| 7 | C | C99, stdlib | `gitpp-c` v0.2.1 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (spec only) |
+| - | Rust | Rust | `gitpp-rust` | scaffolded | (not yet) | (not yet) | pending (needs cargo) |
 
-**Cross-port fuzz test (spec §3 verification):** all 5 fold ports
-(Python, JS, C, C#, Perl) produce **byte-identical SHA-256 leaves**
-on 1000/1000 random float64 records (17,004 generated; 1000 used for
-the fast run; full corpus in progress in background). Fuzz runner is in
+**Three separate claims, three separate corpora.** They are not
+interchangeable and the table keeps them in separate columns so they cannot be
+conflated again:
+
+- **Conformance** — the public 28-case corpus in `gitpp-conformance` (and the
+  hub's private 1,151). One number per port.
+- **Leaf fuzz** — `gitpp-cross-port`, byte-identical SHA-256 leaves over the
+  20,043-record float64 corpus. All 5 leaf ports agree **20,043 / 20,043**,
+  0 disagreements, 0 errors, ~37s. The number is the FULL corpus, not a sample.
+- **Fold** — `gitpp-fold-conformance`, 29 hand-written cases whose expectations
+  come from this spec and not from any port. All 5 ports pass **29 / 29**.
+
+**Cross-port LEAF fuzz (spec §3 verification):** all 5 leaf ports
+(Python, JS, C, C#, Perl) produce **byte-identical SHA-256 leaves** on
+**20,043 / 20,043** random float64 records, 0 disagreements, 0 errors, ~37s.
+Fuzz runner is in
 `SuperInstance/gitpp-cross-port/fuzz.mjs`.
 
 A port is "conformant" if:
