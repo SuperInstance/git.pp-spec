@@ -348,7 +348,7 @@ This spec is implemented by seven ports as of 2026-10-15:
 
 | # | Port | Language | Repo | Conformance | Leaf fuzz | Fold | Doc-only |
 |---|---|---|---|---|---|---|---|
-| 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | **448 / 20,043 diverge** | (not measured) | n/a |
+| 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | 20,043 / 20,043 | (not measured) | n/a |
 | 2 | Python | Python | `gitpp-doctor` v0.2.6 | 1,151 / 1,151 | 20,043 / 20,043 | 29 / 29 | maintained with hub |
 | 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | **diverges, static** | (not measured) | passed (DESIGN.md) |
 | 4 | JS | JavaScript (ESM) | `gitpp-js` v0.1.6 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (spec + design) |
@@ -381,10 +381,10 @@ Both for the same underlying reason: **neither had ever been byte-tested**, so
 "all five ports agree" was a claim about five ports and said nothing about the
 reference they were all ported from.
 
-| impl | divergence | cause | report |
-|---|---|---|---|
-| `patchwork-quilt/git.pp-ng` (TypeScript hub) | **448 / 20,043** records | `pyNumber()` tests `Math.abs(n) < 1e21` where §3 says `1e16` | [git.pp-ng#28](https://github.com/patchwork-quilt/git.pp-ng/issues/28) |
-| `patchwork-quilt/gitpp-beam` (Elixir) | static analysis, two boundaries | the same stale `1e21`, plus `@json_safe_integer` (2^53−1) reused for *encoding* when §3's boundary is `1e16` | [gitpp-beam#2](https://github.com/patchwork-quilt/gitpp-beam/issues/2) |
+| impl | before | after | cause | report |
+|---|---|---|---|---|
+| `patchwork-quilt/git.pp-ng` (TypeScript hub) | **448 / 20,043 diverge** | **0 — 20,043 / 20,043** | `pyNumber()` tested `Math.abs(n) < 1e21` where §3 says `1e16` | [git.pp-ng#28](https://github.com/patchwork-quilt/git.pp-ng/issues/28) **fixed** |
+| `patchwork-quilt/gitpp-beam` (Elixir) | static analysis, two boundaries | **unverified — no BEAM toolchain here** | the same stale `1e21`, plus `@json_safe_integer` (2^53−1) reused for *encoding* when §3's boundary is `1e16` | [gitpp-beam#2](https://github.com/patchwork-quilt/gitpp-beam/issues/2) **fix proposed, not executed** |
 
 The Elixir case is more interesting, and it is specific to the BEAM.
 `is_integer/1` is true for bignums, so a bare literal is an integer *by
@@ -395,8 +395,15 @@ was doing one job and being asked to do a second. The two boundaries differ by
 about 9.9e14, so this is a wide divergence rather than a boundary curiosity.
 
 A conformance suite only covers what it is pointed at. Three bodies of code
-agreed with each other and disagreed with the spec; two more had never been
-measured at all.
+agreed with each other and disagreed with the spec, and the one that mattered
+most — the reference itself — had never been in the set at all.
+
+The hub is now a measured participant rather than an assumption:
+`gitpp-cross-port` reports **ports** and **hub** as two separate numbers,
+because folding the reference into one `agree` count would make five
+conformant ports look broken whenever the reference drifted. The Elixir port
+has no toolchain in the environment that produced this table, so its row
+reads *unverified* rather than *passing*.
 
 A port is "conformant" if:
 - It produces the byte-exact leaves in `cross-port-leafs.json` (the §3.5 test).
