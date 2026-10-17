@@ -348,9 +348,9 @@ This spec is implemented by seven ports as of 2026-10-15:
 
 | # | Port | Language | Repo | Conformance | Leaf fuzz | Fold | Doc-only |
 |---|---|---|---|---|---|---|---|
-| 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | n/a (source) | n/a | n/a |
+| 1 | Hub | TypeScript | `patchwork-quilt/git.pp-ng` | 1,151 / 1,151 | **448 / 20,043 diverge** | (not measured) | n/a |
 | 2 | Python | Python | `gitpp-doctor` v0.2.6 | 1,151 / 1,151 | 20,043 / 20,043 | 29 / 29 | maintained with hub |
-| 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | n/a | n/a | passed (DESIGN.md) |
+| 3 | Elixir | Elixir | `patchwork-quilt/gitpp-beam` | (per hub) | **diverges, static** | (not measured) | passed (DESIGN.md) |
 | 4 | JS | JavaScript (ESM) | `gitpp-js` v0.1.6 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (spec + design) |
 | 5 | C# | C# / .NET 9 | `gitpp-cs` v0.3.4 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (after v0.3.0 §2.5) |
 | 6 | Perl | Perl 5 | `gitpp-pl` v0.1.9 | 28 / 28 public | 20,043 / 20,043 | 29 / 29 | passed (spec only) |
@@ -374,6 +374,29 @@ conflated again:
 **20,043 / 20,043** random float64 records, 0 disagreements, 0 errors, ~37s.
 Fuzz runner is in
 `SuperInstance/gitpp-cross-port/fuzz.mjs`.
+
+### Two implementations outside the five-port set are NOT conformant
+
+Both for the same underlying reason: **neither had ever been byte-tested**, so
+"all five ports agree" was a claim about five ports and said nothing about the
+reference they were all ported from.
+
+| impl | divergence | cause | report |
+|---|---|---|---|
+| `patchwork-quilt/git.pp-ng` (TypeScript hub) | **448 / 20,043** records | `pyNumber()` tests `Math.abs(n) < 1e21` where §3 says `1e16` | [git.pp-ng#28](https://github.com/patchwork-quilt/git.pp-ng/issues/28) |
+| `patchwork-quilt/gitpp-beam` (Elixir) | static analysis, two boundaries | the same stale `1e21`, plus `@json_safe_integer` (2^53−1) reused for *encoding* when §3's boundary is `1e16` | [gitpp-beam#2](https://github.com/patchwork-quilt/gitpp-beam/issues/2) |
+
+The Elixir case is more interesting, and it is specific to the BEAM.
+`is_integer/1` is true for bignums, so a bare literal is an integer *by
+construction*, and `encode/1`'s `is_integer` clause bypasses `leaf_number/1`
+entirely. The constant that decides whether an integer survives a float64 round
+trip is the right one for **decoding** and the wrong one for **encoding**; it
+was doing one job and being asked to do a second. The two boundaries differ by
+about 9.9e14, so this is a wide divergence rather than a boundary curiosity.
+
+A conformance suite only covers what it is pointed at. Three bodies of code
+agreed with each other and disagreed with the spec; two more had never been
+measured at all.
 
 A port is "conformant" if:
 - It produces the byte-exact leaves in `cross-port-leafs.json` (the §3.5 test).
