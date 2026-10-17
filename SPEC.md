@@ -84,7 +84,7 @@ The following input produces the following bytes. The bytes are the *ground trut
 
 **Step 3 — SHA-256 of the UTF-8 bytes** (lowercase hex):
 ```
-b8c5e7f3a0d4c2b1e9f8a7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a
+eb70b332a71ea6c8aab9a3525ef0906f1875f64778b8f2d2f2ebcf27081c6b03
 ```
 
 (The exact leaf will be different for different inputs; the *shape* of the bytes is what matters. A port that emits compact JSON (no spaces), uses `, ` for arrays but `,` for objects, or omits `reason: null` when the field is absent will produce different bytes and fail cross-port verification.)
@@ -201,6 +201,12 @@ The fold is a pure function of the record set. It returns `{state, order, confli
 
 `override > task > witness`. An `override` outranks a `task`, a `task` outranks a `witness`, **even when the witness is a descendant of the task**. "Done by us" cannot be displaced by "seen by us". Uncontested witnesses still reach state (they are ambient truth).
 
+**Class is compared FIRST. Ancestry is a tie-break within a class, never a competing ranking.** Two records of different class are ordered by class alone, regardless of how they are related: an `override` that is an *ancestor* of a `task` still outranks it, and a `witness` that is a *descendant* of a `task` still loses to it. Ancestry is consulted only when the two classes are *equal* (§5.2 step 3), where it selects the more derived of two same-class records.
+
+> **This scope used to be implied rather than stated**, and the gap was load-bearing. The parenthetical above is this clause's only mention of ancestry, and it sits as an exception — so it reads as "class beats ancestry", which inverts every contested key. A cross-reading experiment (`SuperInstance/gitpp-reading-room`) had an implementation adopt exactly that reading; an independent adjudicator scored it 0.030 against 0.960 for this one. The clause is now stated, not inferred.
+
+**Unclassifiable records rank below `witness`.** A record whose `kind` is `null` or is not one of the three names has no class, and the fold must still rank it (§5.2). Such a record ranks **lowest**: it can win an uncontested key, and it loses every contest against any classifiable record, whatever their relationship in the ancestry DAG. An unclassifiable record never displaces a classifiable one.
+
 ### 5.2 Per-key resolution (streaming model)
 
 The fold processes records in topo order (smallest-id-first within a Kahn tier). For each candidate record R, for each key K that R sets:
@@ -211,7 +217,11 @@ The fold processes records in topo order (smallest-id-first within a Kahn tier).
    - If R's class is lower: R is a loser. State[K] unchanged.
    - If R's class is equal: R is a descendant of the current setter iff R is reachable from the current setter via the parent chain. If yes, R is the new setter (the previous setter becomes a loser). If no (or the chain is incomplete), the current setter wins and R is a loser.
 
-The "gather then filter" model described in v0.2.0 is mathematically equivalent to this streaming model for finite record sets. The streaming model is what the conformance corpus actually tests, and is what every implementation in fact uses.
+The "gather then filter" model described in v0.2.0 — gather every candidate for a key, drop any that is an ancestor of another, then take the highest-class survivor — is equivalent to this streaming model **whenever the survivors' classes differ**. It is not equivalent unconditionally: when two same-class records are unrelated in the ancestry DAG, neither is dropped, and "take the highest class among survivors" does not select between them, while the streaming model selects the first in topo order (§5.4).
+
+The tie-break in that case is §5.4's: **among equal-class survivors that are mutually incomparable in ancestry, the first in topo order wins.** A port implementing the v0.2.0 model must apply it to match.
+
+> **Corrected.** This section previously asserted unconditional equivalence. A cross-reading experiment (`SuperInstance/gitpp-reading-room`) searched the space and found the gap: `equivalence.py` in that repo checks four hand-stated cases, and the two-root same-class case is the one where the gather model is silent. An implementation following the old text silently disagreed with every streaming port on same-class sibling keys, having been told the two models were the same thing.
 
 > **Watch the direction of the ancestry test.** Within the winning class, a candidate is *dominated* if **it is an ancestor of another candidate**. Survivors are therefore the **most-derived** records. Asking the inverse question — *"is another candidate my ancestor?"* — selects the *most-ancestral* record instead, which silently reverses every contested key in a chain. Four ports shipped this inversion at some point; the corpus case `d03` exists solely to catch it.
 
@@ -229,7 +239,7 @@ Kahn's algorithm with smallest-id-first. Ties broken by Unicode code point. Orph
 
 ### 5.5 Orphans
 
-A record is an orphan if any of its `parents` is not in the applied set. The orphan's effect is *excluded* from the state; the orphan is *preserved* in the output. The orphan's descendants are *not* auto-orphaned (the fold runs on what stands).
+A record is an orphan if any of its `parents` is not in the applied set. The orphan's effect is *excluded* from the state; the orphan is *preserved* in the output. The orphan's descendants are *not* auto-orphaned (the fold runs on what stands). **A non-orphan descendant's own effects therefore DO enter the fold.** "Not auto-orphaned" means exactly that the record is an ordinary candidate: it is processed in topo order, it can set keys, and it can become the setter (§5.6). Only the record whose *own* parent id is missing is excluded — excluding a whole branch would contradict the sentence above and is not permitted.
 
 **Cycle-affected records are orphans for output purposes.** They are excluded from the fold exactly like missing-parent records, and they MUST appear in the returned `orphans` list. A port that detects cycles to exclude them from the fold but forgets to report them has made the records vanish from the result entirely — see corpus cases `d13`, `d14`, `d23`.
 
