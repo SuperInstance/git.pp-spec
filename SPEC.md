@@ -247,6 +247,21 @@ After resolution, for each key K:
 
 Kahn's algorithm with smallest-id-first. Ties broken by Unicode code point. Orphan records (those with any missing parent) and cycle-affected records are excluded from the order.
 
+**"Smallest-id-first" means: at each step, among the records whose remaining parents have all been emitted, emit the one with the smallest id. Readiness is re-evaluated after every emission.** This is the sequential reading, and it is what a heap-based Kahn does.
+
+It is *not* the tier reading, in which an entire tier is released and ordered as a block before the next tier begins. The two differ exactly when emitting one record makes another ready whose id sorts before an already-ready record:
+
+```
+m (no parents)   z (no parents)   mm (parent m)
+
+sequential:  m, then mm is ready and mm < z  ->  m, mm, z
+tier:        the tier {m, z} is sealed       ->  m, z, mm
+```
+
+**`order` is a first-class output of `derive()`**, so this is not a presentation detail: it changes which record a consumer sees as processed first. A generated corpus of 165 record sets found 28 where the two readings differ in `order` while `state`, `conflicts` and `orphans` are identical — 17% of the space.
+
+> Added after a generated corpus separated three different disagreements that had been reported as one. An independent adjudicator scored the sequential reading 0.890 against 0.470 for the tier reading, and confirmed that a heap-based Kahn *is* smallest-id-first (0.580 against 0.260 for "is not"). The clause is now stated rather than inferred.
+
 ### 5.5 Orphans
 
 A record is an orphan if any of its `parents` is not in the applied set. The orphan's effect is *excluded* from the state; the orphan is *preserved* in the output. The orphan's descendants are *not* auto-orphaned (the fold runs on what stands). **A non-orphan descendant's own effects therefore DO enter the fold.** "Not auto-orphaned" means exactly that the record is an ordinary candidate: it is processed in topo order, it can set keys, and it can become the setter (§5.6). Only the record whose *own* parent id is missing is excluded — excluding a whole branch would contradict the sentence above and is not permitted.
