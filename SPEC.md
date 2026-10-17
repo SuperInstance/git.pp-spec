@@ -215,7 +215,7 @@ An unrecognised `kind` **string** is not malformed. §1.1's malformed rule cover
 
 ### 5.2 Per-key resolution (streaming model)
 
-The fold processes records in topo order (smallest-id-first within a Kahn tier). For each candidate record R, for each key K that R sets:
+The fold processes records in topo order (smallest-id-first, sequential — see §5.4). For each candidate record R, for each key K that R sets:
 
 1. If K is unset in the state, R is the new setter. State[K] = R's value.
 2. If K is set, compare R's class to the current setter's class using class precedence (§5.1):
